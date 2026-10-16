@@ -1,11 +1,21 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>St. Aurelius Chapel — 3D</title><style>html,body{margin:0;height:100%;overflow:hidden;background:#071018;color:#fff;font-family:Georgia,serif}canvas{display:block}#veil{position:fixed;inset:0;z-index:3;display:grid;place-items:center;background:radial-gradient(circle,#263848aa,#05090ddd);text-align:center}#veil div{max-width:460px;padding:34px}h1{letter-spacing:.08em;font-weight:400;margin:0 0 12px}p{line-height:1.55;color:#dce9ef}button{border:1px solid #d6bd77;background:#6d5426;color:#fff;padding:14px 22px;font:600 15px Georgia;cursor:pointer;border-radius:2px}#note{position:fixed;bottom:15px;left:16px;z-index:2;background:#071018a8;padding:9px 12px;border-left:2px solid #d6bd77;font-size:13px;color:#dce9ef}</style></head><body>
 <div id="veil"><div><h1>ST. AURELIUS CHAPEL</h1><p>A small sanctuary in stone, timber, colored light, and candle glow.<br>Drag to orbit · Scroll to approach</p><button id="enter">Enter Chapel &amp; Play Choir</button></div></div><div id="note">Interactive 3D chapel · click and drag to orbit</div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/js/controls/OrbitControls.js"></script><script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x071018);scene.fog=new THREE.Fog(0x071018,25,85);
 const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,200);camera.position.set(17,11,22);
 const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;document.body.appendChild(renderer.domElement);
-const controls=new THREE.OrbitControls(camera,renderer.domElement);controls.target.set(0,5,0);controls.enableDamping=true;controls.dampingFactor=.055;controls.minDistance=8;controls.maxDistance=43;
+let controls;
+if (typeof THREE.OrbitControls === 'function') {
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.target.set(0,5,0);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.055;
+  controls.minDistance = 8;
+  controls.maxDistance = 43;
+}
 scene.add(new THREE.HemisphereLight(0x8db8d7,0x1d120b,1.15));const moon=new THREE.DirectionalLight(0xb9d9ff,1.1);moon.position.set(-15,22,12);moon.castShadow=true;scene.add(moon);
 const stone=new THREE.MeshStandardMaterial({color:0x817d72,roughness:.92}), darkStone=new THREE.MeshStandardMaterial({color:0x544f49,roughness:1}),wood=new THREE.MeshStandardMaterial({color:0x3c1e0e,roughness:.8}),roof=new THREE.MeshStandardMaterial({color:0x2e3030,roughness:.82}),gold=new THREE.MeshStandardMaterial({color:0xc9a35b,metalness:.55,roughness:.3}),plaster=new THREE.MeshStandardMaterial({color:0xd5cbb4,roughness:.9});
 function box(x,y,z,w,h,d,m=stone){let q=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);q.position.set(x,y,z);q.castShadow=q.receiveShadow=true;scene.add(q);return q}function cyl(x,y,z,r,h,m=stone){let q=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,12),m);q.position.set(x,y,z);q.castShadow=q.receiveShadow=true;scene.add(q);return q}
@@ -25,6 +35,45 @@ box(0,2.2,6.6,5.6,1.3,1.55,plaster);box(0,3.25,7.2,.22,4.3,gold);box(0,4.65,7.2,
 for(let z=-23;z<-10;z+=2)box(0,.02,z,3.3,.08,1.25,new THREE.MeshStandardMaterial({color:0x625b52,roughness:1}));
 function stars(){let a=[];for(let i=0;i<260;i++){a.push((Math.random()-.5)*110,Math.random()*42+2,(Math.random()-.5)*110)}let g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(a,3));scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:0xddeeff,size:.18})))}stars();
 // choir: interaction-gated, chord loop with detuned voices/vibrato/filter/reverb
-let audioStarted=false;function choir(){if(audioStarted)return;audioStarted=true;const C=new (window.AudioContext||window.webkitAudioContext)(),master=C.createGain(),filter=C.createBiquadFilter(),conv=C.createConvolver();master.gain.value=.19;filter.type='lowpass';filter.frequency.value=1450;const len=C.sampleRate*3.5,imp=C.createBuffer(2,len,C.sampleRate);for(let c=0;c<2;c++){let d=imp.getChannelData(c);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2.7)}conv.buffer=imp;master.connect(filter);filter.connect(conv);conv.connect(C.destination);filter.connect(C.destination);const chords=[[130.81,164.81,196,261.63],[110,130.81,164.81,220],[146.83,174.61,220,293.66],[130.81,155.56,196,261.63]];let step=0;function play(){let now=C.currentTime,notes=chords[step++%chords.length];notes.forEach((f,i)=>{let o=C.createOscillator(),v=C.createOscillator(),vg=C.createGain(),g=C.createGain();o.type=i%2?'sine':'triangle';o.frequency.value=f;v.frequency.value=.18+i*.035;vg.gain.value=3.2;v.connect(vg);vg.connect(o.frequency);g.gain.setValueAtTime(0,now);g.gain.linearRampToValueAtTime(.055,now+2.2);g.gain.linearRampToValueAtTime(.0001,now+7.8);o.connect(g);g.connect(master);o.start(now);o.stop(now+8)});setTimeout(play,5700)}play()}document.getElementById('enter').onclick=()=>{choir();document.getElementById('veil').style.display='none'};
+let audioStarted=false;let C=null;
+async function choir(){
+  if(audioStarted)return;
+  audioStarted=true;
+  try{
+    const AudioCtx=window.AudioContext||window.webkitAudioContext;
+    if(!AudioCtx)return;
+    C=new AudioCtx();
+    if(C.state==='suspended') await C.resume();
+    const master=C.createGain(),filter=C.createBiquadFilter(),conv=C.createConvolver();
+    master.gain.value=.22;filter.type='lowpass';filter.frequency.value=1450;
+    const len=C.sampleRate*3.5,imp=C.createBuffer(2,len,C.sampleRate);
+    for(let c=0;c<2;c++){let d=imp.getChannelData(c);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2.7)}
+    conv.buffer=imp;master.connect(filter);filter.connect(conv);conv.connect(C.destination);filter.connect(C.destination);
+    const chords=[[130.81,164.81,196,261.63],[110,130.81,164.81,220],[146.83,174.61,220,293.66],[130.81,155.56,196,261.63]];
+    let step=0;
+    function play(){
+      if(!C)return;
+      let now=C.currentTime,notes=chords[step++%chords.length];
+      notes.forEach((f,i)=>{
+        let o=C.createOscillator(),v=C.createOscillator(),vg=C.createGain(),g=C.createGain();
+        o.type=i%2?'sine':'triangle';o.frequency.value=f;v.frequency.value=.18+i*.035;vg.gain.value=3.2;
+        v.connect(vg);vg.connect(o.frequency);
+        g.gain.setValueAtTime(.0001,now);g.gain.linearRampToValueAtTime(.06,now+2.2);g.gain.linearRampToValueAtTime(.0001,now+7.8);
+        o.connect(g);g.connect(master);
+        o.start(now);v.start(now);o.stop(now+8);v.stop(now+8);
+      });
+      setTimeout(play,5700);
+    }
+    play();
+  }catch(e){console.error('Audio init error:',e)}
+}
+const btn=document.getElementById('enter');
+if(btn){
+  btn.onclick=async()=>{
+    await choir();
+    const v=document.getElementById('veil');
+    if(v) v.style.display='none';
+  };
+}
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});(function loop(){requestAnimationFrame(loop);controls.update();renderer.render(scene,camera)})();
 </script></body></html>
